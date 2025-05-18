@@ -1,0 +1,24 @@
+node_modules
+.env
+
+# Hardhat files
+/cache
+/artifacts
+
+# TypeChain files
+/typechain
+/typechain-types
+
+# solidity-coverage files
+/coverage
+/coverage.json
+
+# Hardhat Ignition default folder for deployments against a local node
+/ignition/deployments
+
+
+# Custom
+test_libs/
+
+test_libs_for_tpkm_script/
+tpkm_installed_libs/
