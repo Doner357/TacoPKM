@@ -2,11 +2,12 @@
 
 TacoPKM is a proof-of-concept for a decentralized package management system. It leverages blockchain technology (specifically EVM-compatible chains) for immutable library metadata, ownership, and version control, combined with IPFS for distributed storage of actual code artifacts. This repository contains the core `LibraryRegistry` smart contract and the development environment for it.
 
-Users interact with the TacoPKM system primarily through the [TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI).
+Users interact with the TacoPKM system primarily through the [TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI/tree/license-fee).
 
 ## Table of Contents
 
 - [Features](#features)
+- [Important Considerations: Access Control & IPFS](#important-considerations-access-control--ipfs)
 - [Architecture Overview](#architecture-overview)
 - [System Components](#system-components)
 - [Prerequisites](#prerequisites)
@@ -31,9 +32,43 @@ Users interact with the TacoPKM system primarily through the [TacoPKM-CLI](https
 * **Decentralized Registry:** Library metadata (name, owner, versions, IPFS CIDs, dependencies) stored on an EVM-compatible blockchain.
 * **Immutable History:** Version information and ownership records are tamper-resistant.
 * **Distributed Storage:** Library code artifacts (.tar.gz archives) are stored on IPFS, referenced by CIDs in the smart contract.
-* **Access Control:** Supports public libraries, private libraries with owner-managed authorization.
+* **Access Control:** Supports public libraries, private libraries with owner-managed authorization, and public libraries requiring purchasable licenses.
 * **Dependency Management:** The smart contract stores dependency relationships (library name and semantic version constraints) for each published version.
 * **Ownership & Administration:** Clear ownership of library records and administrative functions for the registry contract itself (e.g., potential for pausing, fee changes, or abandonment, depending on implementation).
+
+## Important Considerations: Access Control & IPFS
+
+TacoPKM uses a smart contract on an EVM-compatible blockchain to manage library metadata, versioning, and access control rules (public, private, licensed). The actual library code archives are stored on IPFS.
+
+**Understanding the Access Model:**
+
+* **Smart Contract as Gatekeeper:** The `LibraryRegistry` smart contract is the source of truth for permissions. The `tpkm` CLI tool is designed to respect and enforce these on-chain rules. For example, `tpkm install` will check `hasAccess` before downloading, and `tpkm info` (for specific versions) will similarly check access before displaying sensitive details like the IPFS CID for restricted libraries.
+* **IPFS is a Public Network:** Once data is on IPFS and its Content Identifier (CID) is known, that data is potentially retrievable by anyone with IPFS access. IPFS itself does not inherently provide private storage or access control for individual CIDs in its public DHT.
+* **CLI as the Primary Enforcement Interface:** TacoPKM's primary mechanism for enforcing license purchases or private library authorizations is through the `tpkm` CLI.
+
+**Potential Loopholes for Advanced Users (The "Vulnerability"):**
+
+It's important for users, especially library publishers relying on privacy or licensing, to understand the following:
+
+1.  **Metadata Transparency:** Most metadata stored on the blockchain (library names, versions, owners, whether a license is required, license fees) is generally public or can be discovered by interacting directly with the smart contract or by analyzing blockchain transactions.
+2.  **IPFS CID Exposure:**
+    * **Direct Contract Interaction:** A technically savvy user with knowledge of the smart contract's ABI (which is bundled with this open-source CLI) could write their own script to call public `view` functions (like `getVersionInfo`) on the `LibraryRegistry` contract directly, potentially retrieving IPFS CIDs even if the `tpkm info` command would hide them based on access rights.
+    * **Event Logs:** Blockchain events (like `VersionPublished`, which includes the IPFS hash) are public. Users can query historical events to find CIDs.
+    * **Transaction Data:** The IPFS hash is part of the input data when `publishVersion` is called. This transaction data is public on the blockchain.
+
+**What This Means:**
+
+* The access control features in TacoPKM (private libraries, license requirements) are primarily enforced by the **`tpkm` CLI tool**. The CLI acts as a "gatekeeper" that respects the on-chain rules.
+* **It is technically possible for determined users to circumvent the `tpkm` CLI and obtain IPFS CIDs for libraries they might not have "official" access to (e.g., a license they haven't purchased for a public-licensed library).** Once they have the CID, they can attempt to download the content directly from IPFS.
+
+**Mitigation and Scope:**
+
+* **Content Encryption (Not Implemented):** For true confidentiality of library content stored on IPFS (preventing download even if the CID is known), the library archive itself would need to be encrypted by the publisher before uploading to IPFS. Decryption keys would then need to be securely distributed only to authorized/licensed users (e.g., via a separate off-chain mechanism). **TacoPKM does not currently implement content encryption or key management.**
+* **Current Design Focus:** TacoPKM's current design focuses on providing a clear, on-chain record of ownership and access rules, with the `tpkm` CLI being the primary interface for respectful interaction with these rules. The hiding of IPFS CIDs in `tpkm info` for restricted libraries is a user-experience measure to guide users through the intended `tpkm install` and `tpkm purchase-license` flows, rather than an unbreakable technical barrier against obtaining the CID through other means.
+* **Legal & Community Norms:** In many ecosystems, even if content is technically accessible, its use is governed by licensing terms and community norms.
+
+**Publisher Advisory:**
+If you are publishing sensitive or commercial libraries and require strong guarantees against unauthorized access to the *content itself*, you should consider implementing an additional layer of end-to-end encryption for your library archives before publishing them with TacoPKM, and manage key distribution separately. For typical open-source or "source-available with paid license for usage" models, the current TacoPKM mechanism provides a good balance of transparency and controlled access via its official tooling.
 
 ## Architecture Overview
 
@@ -46,9 +81,9 @@ This repository is focused on the `LibraryRegistry.sol` smart contract.
 
 ## System Components
 
-* **Smart Contract (`contracts/LibraryRegistry.sol`):** Defines the logic for library registration, version publishing, access control, and dependency tracking. (Solidity version: `0.8.20`)
+* **Smart Contract (`contracts/LibraryRegistry.sol`):** Defines the logic for library registration, version publishing, access control, licensing, and dependency tracking. (Solidity version: `0.8.20`)
 * **IPFS:** External distributed storage network. Not part of this repository but essential for the system's operation.
-* **[TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI):** The official client for interacting with the TacoPKM system. (Separate Repository)
+* **[TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI/tree/license-fee):** The official client for interacting with the TacoPKM system. (Separate Repository)
 
 ## Prerequisites
 
@@ -147,7 +182,7 @@ Deployment is managed using Hardhat Ignition. The deployment module is typically
 
 After successfully deploying the `LibraryRegistry` contract, Hardhat Ignition will output the deployed contract address (e.g., `LibraryRegistryModule#LibraryRegistry - 0x...`).
 
-This **contract address** and the **RPC URL** of the network you deployed to are crucial for configuring the [TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI) so it can interact with your deployed registry instance. Refer to the TacoPKM-CLI's documentation for instructions on setting its network configuration (typically via `tpkm config add` or its own `.env` file).
+This **contract address** and the **RPC URL** of the network you deployed to are crucial for configuring the [TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI/tree/license-fee) so it can interact with your deployed registry instance. Refer to the TacoPKM-CLI's documentation for instructions on setting its network configuration (typically via `tpkm config add` or its own `.env` file).
 
 ## Core Concepts & Functionality
 
@@ -158,22 +193,23 @@ The `LibraryRegistry.sol` smart contract provides the on-chain foundation for:
   * **Access Control:**
       * **Public Libraries:** Accessible by anyone by default.
       * **Private Libraries:** Access restricted to authorized addresses explicitly granted permission by the owner.
-  * **Information Retrieval:** Functions to query library details, versions, owner, access rights, etc.
+      * **Licensed Libraries:** Public libraries can require a purchasable license (potentially with a fee) for access.
+  * **Information Retrieval:** Functions to query library details, versions, owner, access rights, license status, etc.
   * **Deprecation:** Owners can mark specific versions as deprecated.
   * **Ownership Management:** Standard Ownable patterns for library records and potentially for the contract itself.
 
 ## Interacting with TacoPKM
 
-End-users and developers interact with the deployed TacoPKM system (the smart contract and IPFS) using the **[TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI)**.
+End-users and developers interact with the deployed TacoPKM system (the smart contract and IPFS) using the **[TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI/tree/license-fee)**.
 
 The CLI handles:
 
   * Wallet creation and management.
   * Packaging libraries and uploading them to IPFS.
-  * Signing and sending transactions to the `LibraryRegistry` contract for operations like `register`, `publish`, `install`, `authorize`, etc.
+  * Signing and sending transactions to the `LibraryRegistry` contract for operations like `register`, `publish`, `install`, `authorize`, `set-license`, etc.
   * Querying library information.
 
-Please refer to the [TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI) for detailed usage instructions.
+Please refer to the [TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI/tree/license-fee) for detailed usage instructions.
 
 ## License
 
