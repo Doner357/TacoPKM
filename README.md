@@ -46,7 +46,7 @@ This repository is focused on the `LibraryRegistry.sol` smart contract.
 
 ## System Components
 
-* **Smart Contract (`contracts/LibraryRegistry.sol`):** Defines the logic for library registration, version publishing, access control, licensing, and dependency tracking. (Solidity version: `0.8.20`)
+* **Smart Contract (`contracts/LibraryRegistry.sol`):** Defines the logic for library registration, version publishing, access control, and dependency tracking. (Solidity version: `0.8.20`)
 * **IPFS:** External distributed storage network. Not part of this repository but essential for the system's operation.
 * **[TacoPKM-CLI](https://github.com/Doner357/TacoPKM-CLI):** The official client for interacting with the TacoPKM system. (Separate Repository)
 
