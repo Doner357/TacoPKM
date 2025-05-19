@@ -97,7 +97,7 @@ To develop, test, and deploy the `LibraryRegistry` smart contract, you'll need:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Doner357/TacoPKM.git
+git clone --branch license-fee --single-branch https://github.com/Doner357/TacoPKM.git
 cd TacoPKM
 ````
 
